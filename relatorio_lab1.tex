@@ -1,0 +1,108 @@
+% Compile no Overleaf com pdfLaTeX.
+% Preencha os campos da capa antes da entrega.
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+
+\geometry{left=2.2cm,right=2.2cm,top=2.0cm,bottom=2.0cm}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\renewcommand{\arraystretch}{1.12}
+
+\begin{document}
+
+% --- Página 1: capa ---
+\begin{titlepage}
+\centering
+{\large \textbf{Pontifícia Universidade Católica do Rio Grande do Sul}\par}
+\vspace{0.5cm}
+{\normalsize Engenharia de Software\par}
+\vspace{0.5cm}
+{\normalsize Disciplina: Coleta, Preparação e Análise de Dados\par}
+\vfill
+{\Large\bfseries Laboratório 1\par}
+\vspace{0.35cm}
+{\LARGE\bfseries Web Scraping de Vagas de Emprego\par}
+\vspace{0.5cm}
+{\large Portal ProgramaThor\par}
+\vfill
+\begin{minipage}{0.77\textwidth}
+\textbf{Grupo:} Leonardo Fagundes Wingert, Gustavo de Freitas Fidelis e Samuel Bitdinger\par
+\vspace{0.8cm}
+\textbf{Professora:} Katherine Bianchini Esper de Vargas\par
+\end{minipage}
+\vfill
+{Porto Alegre, RS\par}
+{2026\par}
+\end{titlepage}
+
+% --- Página 2: desenvolvimento e resultados ---
+\pagenumbering{arabic}
+\section*{1. Objetivo e decisões de desenvolvimento}
+
+Antes de escrever o scraper, avaliamos o Indeed. Sua análise preliminar de robots.txt mostrou restrições a /job e /viewjob, caminhos das páginas individuais necessárias para obter descrição e requisitos. Por isso, o portal foi descartado antes de qualquer implementação. Em seguida, iniciamos o código no Vagas.com.br: a busca funcionou, mas, durante os testes de acesso às vagas individuais, o site passou a mostrar a mensagem ``Sua solicitação foi bloqueada''. Esse limite foi encontrado na prática, durante o desenvolvimento, e motivou a troca de portal.
+
+O objetivo final foi coletar vagas de desenvolvimento de software, na área de Python, em três páginas do \href{https://programathor.com.br/jobs}{ProgramaThor}. Ele oferece páginas individuais com atividades e requisitos e paginação convencional. A busca não começa em uma URL filtrada: o Selenium abre a lista geral e clica no link visível \texttt{Vagas programador PYTHON}, interagindo com o site como exige o enunciado.
+
+\section*{2. Verificação de robots.txt e sitemap}
+
+Antes da coleta, foi examinado o \href{https://programathor.com.br/robots.txt}{robots.txt}. Na consulta preparatória de 20/09/2026, o bloco \texttt{User-agent: *} restringia \texttt{/admin/}, \texttt{/user/}, \texttt{/users/} e \texttt{/company/}. As rotas necessárias --- \texttt{/jobs}, \texttt{/jobs-python} e \texttt{/jobs/...} --- não apareciam entre as restrições. A verificação desses arquivos foi feita fora do scraper, conforme a decisão do grupo.
+
+O robots.txt indicava o \href{https://programathor.com.br/sitemap.xml}{sitemap.xml}. A cópia examinada continha 30.382 URLs, incluindo categorias por tecnologia, localidades e anúncios individuais. O sitemap serviu para conhecer a estrutura do portal; não foi usado como fonte de vagas ou como atalho para a busca.
+
+\section*{3. Ferramentas, coleta e tratamento}
+
+O Selenium automatiza o Safari: abre o portal, aciona o filtro, avança pelas páginas e visita cada anúncio. Esperas explícitas confirmam o conteúdo carregado, e há um intervalo de cinco segundos entre acessos. O BeautifulSoup interpreta o HTML das listas e das páginas individuais. A biblioteca padrão do Python normaliza URLs, trata datas e grava o \texttt{CSV}; nenhuma API de vagas foi utilizada.
+
+Nas listas, o programa guarda título, link, página e selo de situação. O link identifica duplicatas antes de visitar as vagas. Nas páginas individuais, extrai título, empresa, local, salário, atividades/descrição e requisitos. Campos inexistentes recebem \texttt{Não informado}; expressões como \texttt{Não especificado} ou \texttt{Até R\$18.000} são mantidas como publicadas, sem inventar valores. Erros de navegação ou de extração são tratados; uma vaga com falha não interrompe as demais. O resultado é um único arquivo estruturado, \texttt{dados/vagas.csv}.
+
+\section*{4. Resultado e limites}
+
+Foram percorridas três páginas, com 15 anúncios em cada uma. Dos 45 anúncios, um link repetido foi removido, restando 44 URLs distintas. Duas páginas individuais não carregaram o conteúdo esperado; 42 vagas foram incluídas no CSV, sem URLs duplicadas. Em 29 registros, o salário consta como \texttt{Não especificado}. O portal marcou 36 das 42 vagas como \texttt{Vencida}; seis não exibiam esse selo. A ausência do selo não comprova que o anúncio ainda esteja aberto. A presença de vagas vencidas e a indisponibilidade de duas páginas limitam o uso do arquivo como lista de oportunidades atuais.
+
+\clearpage
+
+% --- Página 3: todos os métodos de busca e declaração de IA ---
+\section*{5. Métodos de localização utilizados no código}
+
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}p{3.2cm}p{5.8cm}X@{}}
+\toprule
+\textbf{Método} & \textbf{Seletor / operação} & \textbf{O que localiza} \\
+\midrule
+Selenium \texttt{By.LINK\_TEXT} & \texttt{Vagas programador PYTHON} & Link de filtro por tecnologia na lista geral. \\
+Selenium \texttt{By.TAG\_NAME} & \texttt{h1} & Cabeçalho que confirma a página de resultados Python. \\
+Selenium CSS & \texttt{.pagination .active} & Número da página atual. \\
+Selenium/BS4 CSS & \texttt{.cell-list > a[href]} & Links principais dos cards de vagas. \\
+Selenium CSS & \texttt{.pagination a[rel="Próx"]} & Link para a página seguinte. \\
+Selenium CSS & \texttt{link[rel="canonical"]} & URL canônica da vaga individual carregada. \\
+Selenium CSS & \texttt{.wrapper-content-job-show .line-height-2-4} & Bloco que contém o texto da vaga. \\
+BS4 \texttt{select\_one} & \texttt{h3}, dentro do card & Título mostrado na lista. \\
+BS4 \texttt{select} & \texttt{span}, dentro de \texttt{h3} & Selos da listagem, inclusive \texttt{Vencida}. \\
+BS4 \texttt{select\_one} & \texttt{.wrapper-content-job-show} & Contêiner dos detalhes da vaga. \\
+BS4 \texttt{select\_one} & \texttt{.wrapper-header-job-show h1} & Título da página individual. \\
+BS4 \texttt{select\_one} & \texttt{h2}, no contêiner de detalhes & Nome da empresa, com ou sem link. \\
+BS4 \texttt{select} & \texttt{.wrapper-details-job-show p} & Parágrafos com local e salário, reconhecidos pelos rótulos \texttt{Localização:} e \texttt{Salário:}. \\
+BS4 \texttt{select} & \texttt{.line-height-2-4 h3} & Títulos das seções de descrição e requisitos. \\
+BS4 \texttt{find\_next\_siblings} & Irmãos até o próximo \texttt{h3} & Texto pertencente a cada seção da vaga. \\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+\vspace{0.35cm}
+\noindent\textbf{Nota:} CSS significa seletor CSS; BS4 significa BeautifulSoup. \texttt{get\_text()} e operações de strings limpam o texto depois da localização. O código não utiliza XPath nem expressões regulares para localizar elementos.
+
+\section*{6. Observações sobre o uso de IA}
+
+Foi utilizado o OpenAI Codex para auxiliar na escolha e análise do portal, no diagnóstico da automação do Safari, na identificação de seletores, na implementação e revisão do scraper, nos testes de extração, na conferência do CSV e na redação deste relatório. A IA também auxiliou a interpretar o enunciado e a registrar a análise preparatória de robots.txt e sitemap.
+
+\end{document}
