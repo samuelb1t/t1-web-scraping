@@ -1,4 +1,5 @@
 import csv
+import platform
 from datetime import datetime
 from pathlib import Path
 from time import sleep
@@ -29,6 +30,19 @@ def salvar(vagas):
         escritor.writerows(vagas)
 
 
+def criar_driver():
+    """Cria o WebDriver adequado ao sistema operacional."""
+    if platform.system() == "Darwin":
+        opcoes = webdriver.SafariOptions()
+        opcoes.page_load_strategy = "none"
+        return webdriver.Safari(options=opcoes)
+    # Linux e Windows usam o Chrome.
+    opcoes = webdriver.ChromeOptions()
+    opcoes.page_load_strategy = "none"
+    opcoes.add_argument("--disable-blink-features=AutomationControlled")
+    return webdriver.Chrome(options=opcoes)
+
+
 def main():
     driver = None
     vagas = []
@@ -36,10 +50,7 @@ def main():
     duplicatas = 0
     erros = 0
     try:
-        opcoes = webdriver.SafariOptions()
-        # As esperas abaixo verificam o conteúdo necessário, sem aguardar anúncios.
-        opcoes.page_load_strategy = "none"
-        driver = webdriver.Safari(options=opcoes)
+        driver = criar_driver()
         driver.set_page_load_timeout(30)
         espera = WebDriverWait(driver, 20)
 
@@ -127,7 +138,7 @@ def main():
             try:
                 driver.quit()
             except WebDriverException as erro:
-                print(f"Não foi possível fechar o Safari: {erro.msg}")
+                print(f"Não foi possível fechar o navegador: {erro.msg}")
 
     print(f"\nResultado: {len(vagas)} vagas; {paginas_lidas} páginas; "
           f"{duplicatas} duplicatas removidas; {erros} erros.")
